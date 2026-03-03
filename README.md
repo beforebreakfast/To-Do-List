@@ -1,18 +1,21 @@
-# To-Do-List
+# To-Do List (Full CRUD Version)
 
-A simple To-Do List web app (HTML / CSS / JavaScript)
+A full-stack To-Do List web application built with HTML, CSS, JavaScript and Node.js (Express).
 
 ## Features
-- Add / edit / delete tasks
+- Add tasks
+- Edit tasks
+- Delete tasks
 - Mark tasks as completed
-- Save tasks in LocalStorage
-- Shows greeting (Good Morning / Afternoon / Evening)
+- Task status & priority
+- Real-time update from backend API
 
 ## Tech Stack
+### Frontend
 - HTML
 - CSS
-- JavaScript
+- JavaScript (Fetch API)
 
-## How to run
-1. Download / clone this repository
-2. Open `index.html` in your browser
+### Backend
+- Node.js
+- Express.js

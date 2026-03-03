@@ -1,14 +1,13 @@
-let tasks = [],
-  editingId = null;
+let tasks = [];
+let editingId = null;
 
-function loadData() {
-  const saved = localStorage.getItem("beforebreakfastTasks");
-  if (saved) tasks = JSON.parse(saved);
-  else tasks = [];
-
-  updateGreeting();
+async function loadTodos() {
+  const res = await fetch("http://localhost:3000/todos");
+  tasks = await res.json();
   renderTasks();
 }
+
+window.onload = loadTodos;
 
 function updateGreeting() {
   const hour = new Date().getHours();
@@ -18,18 +17,14 @@ function updateGreeting() {
   document.getElementById("greeting").textContent = `${greet}, Beforebreakfast`;
 }
 
-function saveData() {
-  localStorage.setItem("beforebreakfastTasks", JSON.stringify(tasks));
-}
-
 function renderTasks() {
   const onHold = tasks.filter((t) => !t.completed);
   const completed = tasks.filter((t) => t.completed);
 
   document.getElementById("onHoldTasks").innerHTML = onHold.length
     ? onHold
-        .map(
-          (t) => `
+      .map(
+        (t) => `
             <div class="task-item">
                 <div class="task-checkbox ${t.completed ? "completed" : ""}" onclick="toggleTask(${t.id})"></div>
                 <div class="task-content">
@@ -49,14 +44,14 @@ function renderTasks() {
                 </button>
             </div>
         `
-        )
-        .join("")
+      )
+      .join("")
     : '<p style="color:#9ca3af;padding:20px;">No tasks on hold</p>';
 
   document.getElementById("completedTasks").innerHTML = completed.length
     ? completed
-        .map(
-          (t) => `
+      .map(
+        (t) => `
             <div class="task-item">
                 <div class="task-checkbox completed" onclick="toggleTask(${t.id})"></div>
                 <div class="task-content">
@@ -74,8 +69,8 @@ function renderTasks() {
                 </button>
             </div>
         `
-        )
-        .join("")
+      )
+      .join("")
     : '<p style="color:#9ca3af;padding:20px;">No completed tasks</p>';
 
   const total = tasks.length;
@@ -91,23 +86,50 @@ function renderTasks() {
   document.getElementById("totalProgress").style.width = rate + "%";
   document.getElementById("completionProgress").style.width = rate + "%";
 
-  saveData();
 }
 
-function toggleTask(id) {
+async function toggleTask(id) {
   const t = tasks.find((t) => t.id === id);
-  if (t) {
-    t.completed = !t.completed;
-    t.status = t.completed ? "completed" : "pending";
-    renderTasks();
+
+  if (!t) return;
+
+  const updatedStatus = !t.completed;
+
+  await fetch(`http://localhost:3000/todos/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      completed: updatedStatus,
+      status: updatedStatus ? "completed" : "pending"
+    })
+  });
+
+  loadTodos();
+}
+
+async function deleteTask(id) {
+  if (confirm("Are you sure you want to delete this task?")) {
+    await fetch(`http://localhost:3000/todos/${id}`, {
+      method: "DELETE"
+    });
+
+    loadTodos();
   }
 }
 
-function deleteTask(id) {
-  if (confirm("Are you sure you want to delete this task?")) {
-    tasks = tasks.filter((t) => t.id !== id);
-    renderTasks();
-  }
+function editTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+
+  editingId = id;
+
+  document.getElementById("taskTitle").value = task.title;
+  document.getElementById("taskStatus").value = task.status;
+  document.getElementById("taskPriority").value = task.priority;
+
+  openModal();
 }
 
 function openModal() {
@@ -120,39 +142,44 @@ function closeModal() {
   editingId = null;
 }
 
-document.getElementById("taskForm").addEventListener("submit", (e) => {
+document.getElementById("taskForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const title = document.getElementById("taskTitle").value;
   const status = document.getElementById("taskStatus").value;
   const priority = document.getElementById("taskPriority").value;
+
   if (editingId) {
-    const t = tasks.find((t) => t.id === editingId);
-    t.title = title;
-    t.status = status;
-    t.priority = priority;
-    t.completed = status === "completed";
+    // UPDATE
+    await fetch(`http://localhost:3000/todos/${editingId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        status,
+        priority,
+        completed: status === "completed"
+      })
+    });
   } else {
-    tasks.push({
-      id: Date.now(),
-      title,
-      status,
-      priority,
-      completed: status === "completed",
+    // CREATE
+    await fetch("http://localhost:3000/todos", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        status,
+        priority,
+        completed: status === "completed"
+      })
     });
   }
-  renderTasks();
+
   closeModal();
+  loadTodos();
 });
 
-function editTask(id) {
-  editingId = id;
-  const t = tasks.find((t) => t.id === id);
-  if (t) {
-    document.getElementById("taskTitle").value = t.title;
-    document.getElementById("taskStatus").value = t.status;
-    document.getElementById("taskPriority").value = t.priority;
-    openModal();
-  }
-}
-
-loadData();
